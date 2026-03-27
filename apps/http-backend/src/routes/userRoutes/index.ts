@@ -21,7 +21,7 @@ router.post('/signup', async (req: Request, res: Response) => {
   if (!parsedBody.success) {
     return res.status(400).json({ 
       message: "Invalid input data for user signup.",
-      error: parsedBody.error.message });
+      error: JSON.parse(parsedBody.error.message) });
   }
 
   const { name, email, password } = parsedBody.data;
