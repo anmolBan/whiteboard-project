@@ -163,15 +163,23 @@ router.get('/chats/:roomId', async (req: Request, res: Response) => {
                 roomId
             },
             orderBy: {
-                createdAt: 'desc'
+                createdAt: 'asc'
             },
-            take: 50
+            take: 50,
+            include: {
+              user: {
+                select: {
+                  name: true
+                }
+              }
+            }
         });
         return res.status(200).json({
             message: "Chats fetched successfully.",
             chats: chats.map(chat => ({
                 userId: chat.userId,
                 message: chat.message,
+                name: chat.user.name,
                 timestamp: chat.createdAt
             }))
         });
@@ -182,49 +190,5 @@ router.get('/chats/:roomId', async (req: Request, res: Response) => {
         });
     }
 });
-
-// router.post('/join-room', authMiddleware, async (req: Request, res: Response) => {
-//   const body = req.body;
-
-//   const parsedBody = CreateRoomSchema.safeParse(body);
-
-//   if (!parsedBody.success) {
-//     return res.status(400).json({ 
-//       message: "Invalid input data for joining a room.",
-//       error: parsedBody.error.message });
-//   }
-
-//   const { name } = parsedBody.data;
-//   const userId = req.userId;
-
-//   if (!userId || typeof userId !== "string") {
-//     return res.status(401).json({ message: "User not authenticated." });
-//   }
-
-//   // Here you would typically check if the room exists and if the user can join it.
-//   try{
-//     const room = await prisma.room.findUnique({
-//       where: { 
-//         slug: name 
-//       }
-//     });
-
-//     if(!room){
-//       return res.status(404).json({message: "Room not found."});
-//     }
-
-//     await prisma.room.create({
-//       data: {
-//         slug: name,
-//         adminId: userId
-//       }
-//     });
-//   } catch(error){
-//     return res.status(500).json({
-//       message: "An error occurred while joining the room.",
-//       error: error instanceof Error ? error.message : "Unknown error"
-//     });
-//   }
-// });
 
 export default router;

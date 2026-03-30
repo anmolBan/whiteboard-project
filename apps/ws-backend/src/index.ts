@@ -8,24 +8,25 @@ import prisma from "@repo/db";
 const wss = new WebSocketServer({ port: WS_PORT });
 const roomManager = RoomManager.getInstance();
 
-function checkUser(token: string) : string | null {
+function checkUser(token: string) : [string | null, string | null] {
     try {
         const decoded = jwt.verify(token, JWT_SECRET)
         if(typeof decoded === "string"){
-            return null;
+            return [null, null];
         }
 
         if(!decoded || !decoded.userId){
-          return null;
+          return [null, null];
         }
 
-        return decoded.userId;
+        return [decoded.userId, decoded.name];
     } catch (error) {
-        return null;
+        return [null, null];
     }
 }
 
 wss.on("connection", (ws: WebSocket, request) => {
+  console.log("New client connected");
   const url = request.url;
   if(!url){
     return;
@@ -33,7 +34,7 @@ wss.on("connection", (ws: WebSocket, request) => {
 
   const queryParams = new URLSearchParams(url.split('?')[1]);
   const token = queryParams.get('token') || "";
-  const userId = checkUser(token);
+  const [userId, name] = checkUser(token);
 
   if(!userId){
     ws.close();
@@ -54,6 +55,7 @@ wss.on("connection", (ws: WebSocket, request) => {
           roomManager.broadcast(currentRoomId, JSON.stringify({
             type: "user-left",
             userId,
+            name,
             timestamp: new Date().toISOString()
           }), userId);
         }
@@ -66,6 +68,7 @@ wss.on("connection", (ws: WebSocket, request) => {
         roomManager.broadcast(roomId, JSON.stringify({
           type: "user-joined",
           userId,
+          name,
           users: roomManager.getUsersInRoom(roomId),
           timestamp: new Date().toISOString()
         }), userId);
@@ -83,7 +86,9 @@ wss.on("connection", (ws: WebSocket, request) => {
         // Broadcast message to room
         roomManager.broadcast(currentRoomId, JSON.stringify({
           type: "message",
+          roomId: currentRoomId,
           userId,
+          name,
           content,
           timestamp: new Date().toISOString()
         }), userId);
@@ -95,10 +100,12 @@ wss.on("connection", (ws: WebSocket, request) => {
 
   ws.on("close", () => {
     if (currentRoomId) {
+      console.log(`Client ${userId} disconnected from room ${currentRoomId}`);
       roomManager.leaveRoom(currentRoomId, userId);
       roomManager.broadcast(currentRoomId, JSON.stringify({
         type: "user-left",
         userId,
+        name,
         users: roomManager.getUsersInRoom(currentRoomId),
         timestamp: new Date().toISOString()
       }));

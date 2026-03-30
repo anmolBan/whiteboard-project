@@ -32,6 +32,7 @@ export class RoomManager {
 
   public broadcast(roomId: string, message: string, excludeUserId?: string): void {
     const room = this.rooms.get(roomId);
+    console.log(message);
     if (room) {
       room.forEach((ws, userId) => {
         if (!excludeUserId || userId !== excludeUserId) {

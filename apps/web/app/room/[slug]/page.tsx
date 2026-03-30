@@ -22,7 +22,7 @@ export default async function RoomPage({
     params: Promise<{ slug: string }>
 }) {
     const { slug } = await params;
-    const roomId =  await getRoomId(slug);
+    const roomId = await getRoomId(slug);
 
     if(!roomId){
         return (
@@ -32,10 +32,11 @@ export default async function RoomPage({
         )
     }
 
+    // localStorage.setItem("roomId", roomId); // Store roomId in localStorage for later use in WebSocket connection
+
     return (
         <div>
-            {/* TODO: Create a separate ChatRoom client component and use it here */}
-            <ChatRoom roomId={roomId}/>
+            <ChatRoom roomId={roomId} slug={slug} />
         </div>
     )
 }
