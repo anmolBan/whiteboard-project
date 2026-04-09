@@ -268,20 +268,16 @@ export default function CanvasComponent({roomId, roomName, canvasData}: { roomId
         {/* Right: Collaborators + Share */}
         <div className="flex items-center gap-2.5">
           <div className="hidden items-center sm:flex">
-            {[
-              { color: "#a855f7", letter: "A" },
-              { color: "#10b981", letter: "S" },
-              { color: "#f59e0b", letter: "M" },
-            ].map((u, i) => (
+            {roomMembers.map((u, i) => (
               <div
                 key={i}
                 className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0c0c1d] text-[9px] font-bold text-white"
                 style={{
-                  backgroundColor: u.color,
+                  backgroundColor: `hsl(${(i * 137.508) % 360} 70% 50%)`, // distribute colors evenly
                   marginLeft: i > 0 ? -6 : 0,
                 }}
               >
-                {u.letter}
+                {u.charAt(0).toUpperCase()}
               </div>
             ))}
             <div className="ml-2 flex items-center gap-1.5">
