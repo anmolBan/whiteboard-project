@@ -31,8 +31,9 @@ import Link from "next/link";
 
 // CRITICAL - loads Excalidraw's own CSS so icons/toolbar render at correct size
 import "@excalidraw/excalidraw/index.css";
-import axios from "axios";
 import { useSocket } from "@/hooks/useSocket";
+import { useSession } from "next-auth/react";
+import ChatComponent from "./ChatComponent";
 
 /*
  * --- THEMED LOADING SPINNER ---
@@ -97,7 +98,7 @@ const Excalidraw = dynamic(
  * Includes: header bar, logo, room name, save indicator,
  * collaborator avatars, share button, and ambient glow effects.
 */
-export default function CanvasComponent({roomId, roomName, canvasData}: { roomId: string, roomName: string, canvasData: any}) {
+export default function CanvasComponent({roomId, roomName, canvasData, initialChats}: { roomId: string, roomName: string, canvasData: any, initialChats: {userId: string, name: string, message: string, timestamp: string}[]}) {
   // Next.js 15+ passes params as a Promise - unwrap with use()
   const savedElements = canvasData?.canvasData?.elements ?? null;
 
@@ -108,6 +109,8 @@ export default function CanvasComponent({roomId, roomName, canvasData}: { roomId
   const {socket, loading} = useSocket();
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [roomMembers, setRoomMembers] = useState<{userId: string, name: string}[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const { data: session } = useSession();
 
   // Extract saved elements from the API response — null if nothing saved yet
 
@@ -133,16 +136,16 @@ export default function CanvasComponent({roomId, roomName, canvasData}: { roomId
     if(!socket || loading) return;
 
     const handleMessage = (event: MessageEvent) => {
-      // console.log("Received WebSocket message:", event.data);
       const data = JSON.parse(event.data);
       console.log(data);
       if(data.type === "user-joined" || data.type === "user-left"){
         setRoomMembers(data.users);
-        // setRoomMembers(data.users);
       }
       // }
       if(data.type === "canvas-update" && data.roomId === roomId){
-        excalidrawAPI?.updateScene({ elements: data.content.elements });
+        if(data.userId !== session?.user.id){
+          excalidrawAPI?.updateScene({ elements: data.content.elements });
+        }
       }
     };
 
@@ -174,159 +177,178 @@ export default function CanvasComponent({roomId, roomName, canvasData}: { roomId
 
 
   // Pretty room name from slug
-  const displayName = roomName
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+  // not working
+  // const displayName = roomName
+  //   .replace(/-/g, " ")
+  //   .replace(/\b\w/g, (l) => l.toUpperCase());
+
+  const displayName = roomName;
 
   return (
-    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#080815]">
-      {/* Ambient glow blobs behind the canvas */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="animate-pulse-glow absolute -top-60 -left-60 h-[500px] w-[500px] rounded-full bg-purple-700/10 blur-[180px]" />
-        <div
-          className="animate-pulse-glow absolute -bottom-40 -right-40 h-[400px] w-[400px] rounded-full bg-indigo-600/10 blur-[180px]"
-          style={{ animationDelay: "2s" }}
-        />
-      </div>
+      <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#080815]">
+        {/* Ambient glow blobs behind the canvas */}
+        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+          <div className="animate-pulse-glow absolute -top-60 -left-60 h-[500px] w-[500px] rounded-full bg-purple-700/10 blur-[180px]" />
+          <div
+            className="animate-pulse-glow absolute -bottom-40 -right-40 h-[400px] w-[400px] rounded-full bg-indigo-600/10 blur-[180px]"
+            style={{ animationDelay: "2s" }}
+          />
+        </div>
 
-      {/* Top bar with logo, room name, save status, collaborators, share */}
-      <header className="relative z-[9999] flex h-12 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#0c0c1d]/80 px-3 backdrop-blur-xl">
-        {/* Left: Logo + Room name */}
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/"
-            className="group flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-white/[0.04]"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 shadow-md shadow-purple-500/20 transition-shadow group-hover:shadow-purple-500/40">
+        {/* Top bar with logo, room name, save status, collaborators, share */}
+        <header className="relative z-[9999] flex h-12 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#0c0c1d]/80 px-3 backdrop-blur-xl">
+          {/* Left: Logo + Room name */}
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/"
+              className="group flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-white/[0.04]"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 shadow-md shadow-purple-500/20 transition-shadow group-hover:shadow-purple-500/40">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </div>
+              <span className="hidden text-sm font-bold text-white sm:block">
+                SketchSync
+              </span>
+            </Link>
+            <div className="h-4 w-px bg-white/10" />
+            <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1">
               <svg
+                className="shrink-0 text-purple-400/60"
                 width="13"
                 height="13"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="white"
-                strokeWidth="2.5"
+                stroke="currentColor"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18M9 21V9" />
               </svg>
+              <span className="max-w-[200px] truncate text-xs font-medium text-gray-300">
+                {displayName}
+              </span>
             </div>
-            <span className="hidden text-sm font-bold text-white sm:block">
-              SketchSync
-            </span>
-          </Link>
-          <div className="h-4 w-px bg-white/10" />
-          <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1">
-            <svg
-              className="shrink-0 text-purple-400/60"
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18M9 21V9" />
-            </svg>
-            <span className="max-w-[200px] truncate text-xs font-medium text-gray-300">
-              {displayName}
-            </span>
           </div>
-        </div>
 
-        {/* Centre: Save indicator */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          {saved ? (
-            <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/10 bg-emerald-500/[0.06] px-3 py-0.5">
+          {/* Centre: Save indicator */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            {saved ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/10 bg-emerald-500/[0.06] px-3 py-0.5">
+                <svg
+                  className="text-emerald-400"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                <span className="text-[11px] font-medium text-emerald-400/90">
+                  Saved
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/10 bg-amber-500/[0.06] px-3 py-0.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-[11px] font-medium text-amber-400/90">
+                  Saving...
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Collaborators + Chat toggle + Share */}
+          <div className="flex items-center gap-2.5">
+            <div className="hidden items-center sm:flex">
+              {/* Show only first 3 members of the group */}
+              {roomMembers.slice(0, 3).map((u, i) => (
+                <div
+                  key={i}
+                  className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0c0c1d] text-[9px] font-bold text-white"
+                  style={{
+                    backgroundColor: `hsl(${(i * 137.508) % 360} 70% 50%)`, // distribute colors evenly
+                    marginLeft: i > 0 ? -6 : 0,
+                  }}
+                >
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+              ))}
+              <div className="ml-2 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                <span className="text-[11px] text-gray-500">{roomMembers.length} online</span>
+              </div>
+            </div>
+            <div className="hidden h-4 w-px bg-white/10 sm:block" />
+            <button
+              onClick={() => setChatOpen(prev => !prev)}
+              className={`relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all ${
+                chatOpen
+                  ? "bg-purple-500/15 text-purple-400 border border-purple-500/20"
+                  : "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.06] hover:text-gray-300"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              <span className="hidden sm:inline">Chat</span>
+            </button>
+            <div className="hidden h-4 w-px bg-white/10 sm:block" />
+            <button className="group flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-purple-500/20 transition-all hover:shadow-purple-500/40 hover:scale-[1.03] active:scale-[0.97]">
               <svg
-                className="text-emerald-400"
+                className="transition-transform group-hover:scale-110"
                 width="12"
                 height="12"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="3"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <path d="M20 6L9 17l-5-5" />
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              <span className="text-[11px] font-medium text-emerald-400/90">
-                Saved
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 rounded-full border border-amber-500/10 bg-amber-500/[0.06] px-3 py-0.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[11px] font-medium text-amber-400/90">
-                Saving...
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Collaborators + Share */}
-        <div className="flex items-center gap-2.5">
-          <div className="hidden items-center sm:flex">
-            {roomMembers.map((u, i) => (
-              <div
-                key={i}
-                className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0c0c1d] text-[9px] font-bold text-white"
-                style={{
-                  backgroundColor: `hsl(${(i * 137.508) % 360} 70% 50%)`, // distribute colors evenly
-                  marginLeft: i > 0 ? -6 : 0,
-                }}
-              >
-                {u.name.charAt(0).toUpperCase()}
-              </div>
-            ))}
-            <div className="ml-2 flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-              </span>
-              <span className="text-[11px] text-gray-500">{roomMembers.length} online</span>
-            </div>
+              Share
+            </button>
           </div>
-          <div className="hidden h-4 w-px bg-white/10 sm:block" />
-          <button className="group flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-purple-500/20 transition-all hover:shadow-purple-500/40 hover:scale-[1.03] active:scale-[0.97]">
-            <svg
-              className="transition-transform group-hover:scale-110"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </svg>
-            Share
-          </button>
-        </div>
-      </header>
+        </header>
 
-      {/* Canvas fills remaining space via flex-1 */}
-      <main className="excalidraw-canvas-wrapper relative flex-1">
-        {mounted && (
-          <Excalidraw
-            theme="dark"
-            excalidrawAPI={(api) => setExcalidrawAPI(api)}
-            initialData={savedElements ? { elements: savedElements } : null}
-            onChange={handleChange}
-            UIOptions={{
-              canvasActions: { changeViewBackgroundColor: false },
-            }}
-          />
-        )}
-      </main>
+        {/* Canvas fills remaining space via flex-1 */}
+        <main className="excalidraw-canvas-wrapper relative flex-1">
+          {mounted && (
+            <Excalidraw
+              theme="dark"
+              excalidrawAPI={(api) => setExcalidrawAPI(api)}
+              initialData={savedElements ? { elements: savedElements } : null}
+              onChange={handleChange}
+              UIOptions={{
+                canvasActions: { changeViewBackgroundColor: false },
+              }}
+            />
+          )}
+        </main>
+      <ChatComponent roomId={roomId} socket={socket} loading={loading} chats={initialChats} isOpen={chatOpen} onToggle={() => setChatOpen(false)} />
     </div>
   );
 }

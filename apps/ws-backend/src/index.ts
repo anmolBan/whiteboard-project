@@ -87,6 +87,8 @@ wss.on("connection", (ws: WebSocket, request) => {
           message: content,
         });
 
+        console.log(content);
+
         // Broadcast message to room
         roomManager.broadcast(currentRoomId, JSON.stringify({
           type: "message",

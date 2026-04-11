@@ -19,6 +19,22 @@ async function fetchCanvasData(roomId: string, token: string): Promise<any>{
     }
 }
 
+async function fetchChatData(roomId: string, token: string): Promise<{userId: string, name: string, message: string, timestamp: string}[]>{
+    try{
+        const response = await axios.get(`${process.env.BACKEND_URL}/api/users/chats/${roomId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        
+        return response.data.chats ?? [];
+
+    } catch(error){
+        console.error("Error fetching chat data:", error);
+        return [];
+    }
+}
+
 export default async function CanvasComponentWrapper({roomId, roomName}: {roomId: string, roomName: string}) {
     const session = await getServerSession(authOptions);
     if(!session || !session.accessToken){
@@ -31,9 +47,8 @@ export default async function CanvasComponentWrapper({roomId, roomName}: {roomId
         redirect("/");
     }
     const canvasData = await fetchCanvasData(roomId, token);
+    const chatData = await fetchChatData(roomId, token);
     return (
-        <div>
-            <CanvasComponent roomId={roomId} roomName={roomName} canvasData={canvasData} />
-        </div>
+        <CanvasComponent roomId={roomId} roomName={roomName} canvasData={canvasData} initialChats={chatData} />
     )
 }

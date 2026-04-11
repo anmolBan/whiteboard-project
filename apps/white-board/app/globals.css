@@ -218,3 +218,29 @@ body {
   width: 100%;
   animation: loading-bar 1.6s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Chat panel – thin scrollbar matching SketchSync theme
+   ═══════════════════════════════════════════════════════════════ */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 99px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.35);
+}
+
+/* Chat panel slide-in */
+@keyframes chat-slide-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-chat-slide-in {
+  animation: chat-slide-in 0.25s ease-out forwards;
+}
