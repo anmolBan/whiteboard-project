@@ -34,7 +34,7 @@ export default function CreateRoom() {
     );
   }
 
-  if (session.status !== "authenticated") {
+  if (session.status !== "authenticated" || !session.data.accessToken || session.data.expires < new Date().toISOString()) {
     router.push("/signin");
     return null;
   }

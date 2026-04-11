@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 async function getRoomId(roomName: string): Promise<string | null> {
     const session = await getServerSession(authOptions);
-    if (!session || !session.accessToken) {
+    if (!session || !session.accessToken || session.expires < new Date().toISOString()) {
         redirect("/signin");
     }
     try {
