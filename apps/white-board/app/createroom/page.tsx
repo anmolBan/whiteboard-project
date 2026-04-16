@@ -96,6 +96,9 @@ export default function CreateRoom() {
       if (error.response?.status === 404) {
         setError("Room not found. Check the name and try again.");
       } else if (error.response?.data?.message) {
+        if(error.response.status === 401){
+          setError("Your session has expired. Please sign in again.");
+        }
         setError(error.response.data.message);
       } else {
         setError("Failed to join room. Please try again.");
