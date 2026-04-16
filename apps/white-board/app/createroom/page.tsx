@@ -2,7 +2,7 @@
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function CreateRoom() {
@@ -13,6 +13,15 @@ export default function CreateRoom() {
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if(session.status === "loading"){
+      return;
+    }
+    if(session.status === "unauthenticated" || !session.data?.accessToken || session.data.expires < new Date().toISOString()){
+      router.push("/signin");
+    }
+  }, [session, router]);
 
   if (session.status === "loading") {
     return (
@@ -34,11 +43,6 @@ export default function CreateRoom() {
     );
   }
 
-  if (session.status !== "authenticated" || !session.data.accessToken || session.data.expires < new Date().toISOString()) {
-    router.push("/signin");
-    return null;
-  }
-
   const handleCreateRoomClick = async () => {
     if (!createRoomName.trim()) {
       setError("Please enter a room name.");
@@ -52,7 +56,7 @@ export default function CreateRoom() {
         { name: createRoomName.trim() },
         {
           headers: {
-            Authorization: `Bearer ${session.data.accessToken}`,
+            Authorization: `Bearer ${session.data?.accessToken}`,
           },
         }
       );
@@ -85,7 +89,7 @@ export default function CreateRoom() {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/room/${joinRoomName.trim()}`,
         {
           headers: {
-            Authorization: `Bearer ${session.data.accessToken}`,
+            Authorization: `Bearer ${session.data?.accessToken}`,
           },
         }
       );
@@ -99,7 +103,9 @@ export default function CreateRoom() {
         if(error.response.status === 401){
           setError("Your session has expired. Please sign in again.");
         }
-        setError(error.response.data.message);
+        else{
+          setError(error.response.data.message);
+        }
       } else {
         setError("Failed to join room. Please try again.");
       }
