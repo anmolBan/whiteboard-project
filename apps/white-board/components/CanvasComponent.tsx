@@ -34,6 +34,7 @@ import "@excalidraw/excalidraw/index.css";
 import { useSocket } from "@/hooks/useSocket";
 import { useSession } from "next-auth/react";
 import ChatComponent from "./ChatComponent";
+import { useRouter } from "next/navigation";
 
 /*
  * --- THEMED LOADING SPINNER ---
@@ -110,9 +111,19 @@ export default function CanvasComponent({roomId, roomName, canvasData, initialCh
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [roomMembers, setRoomMembers] = useState<{userId: string, name: string}[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
-  const { data: session } = useSession();
+  const session = useSession();
+  const router = useRouter();
 
   // Extract saved elements from the API response — null if nothing saved yet
+
+  useEffect(() => {
+    if(session.status === "loading"){
+      return;
+    }
+    if(session.status === 'unauthenticated' || !session.data?.accessToken || session.data.expires < new Date().toISOString()){
+      router.push("/signin");
+    }
+  }, [session, router]);
 
   useEffect(() => {
     setMounted(true);
@@ -143,7 +154,7 @@ export default function CanvasComponent({roomId, roomName, canvasData, initialCh
       }
       // }
       if(data.type === "canvas-update" && data.roomId === roomId){
-        if(data.userId !== session?.user.id){
+        if(data.userId !== session?.data?.user?.id){
           excalidrawAPI?.updateScene({ elements: data.content.elements });
         }
       }
@@ -153,7 +164,7 @@ export default function CanvasComponent({roomId, roomName, canvasData, initialCh
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [socket, loading, roomId, excalidrawAPI]);
+  }, [socket, loading, roomId, excalidrawAPI, session]);
 
   function handleChange(elements: any, appState: any, files: any) {
     const cursorButton = appState.cursorButton ?? "up";
