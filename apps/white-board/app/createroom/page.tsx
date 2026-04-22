@@ -110,7 +110,7 @@ export default function CreateRoom() {
         setError("Failed to join room. Please try again.");
       }
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
