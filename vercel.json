@@ -1,4 +1,4 @@
 {
-  "buildCommand": "cd ../.. && npx turbo run build --filter=whiteboard",
+  "buildCommand": "cd ../.. && npx turbo run build --filter=white-board",
   "installCommand": "cd ../.. && npm install"
 }
