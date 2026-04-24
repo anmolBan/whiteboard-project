@@ -38,10 +38,10 @@ async function fetchChatData(roomId: string, token: string): Promise<{userId: st
 
 export default async function CanvasComponentWrapper({roomId, roomName}: {roomId: string, roomName: string}) {
     const session = await getServerSession(authOptions);
-    if(!session || !session.accessToken){
+    if(!session || !session.user || !session.user.accessToken){
         redirect("/signin");
     }
-    const token = session.accessToken;
+    const token = session.user.accessToken;
 
     // TODO handle case where roomID is invalid or null (e.g., show error message or redirect)
     if(!roomId){

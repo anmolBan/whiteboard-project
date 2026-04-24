@@ -1,9 +1,6 @@
 import express, { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { CreateRoomSchema, UserOAuthSigninSchema, UserSigninSchema, UserSignupSchema } from "@repo/types";
+import { CreateRoomSchema } from "@repo/types";
 import  prisma from "@repo/db";
-import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "@repo/backend_common";
 import authMiddleware from '../../middleware/index.js';
 // import authMiddleware from '../../middlewares';
 
@@ -13,113 +10,113 @@ router.get('/', (req, res) => {
   res.send('Hi there! This is the user route.');
 });
 
-router.post('/signup', async (req: Request, res: Response) => {
-  const body = req.body;
+// router.post('/signup', async (req: Request, res: Response) => {
+//   const body = req.body;
 
-  const parsedBody = UserSignupSchema.safeParse(body);
+//   const parsedBody = UserSignupSchema.safeParse(body);
 
-  if (!parsedBody.success) {
-    return res.status(400).json({ 
-      message: "Invalid input data for user signup.",
-      error: JSON.parse(parsedBody.error.message) });
-  }
+//   if (!parsedBody.success) {
+//     return res.status(400).json({ 
+//       message: "Invalid input data for user signup.",
+//       error: JSON.parse(parsedBody.error.message) });
+//   }
 
-  const { name, email, password } = parsedBody.data;
+//   const { name, email, password } = parsedBody.data;
 
-  try{
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword
-      }
-    });
+//   try{
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const newUser = await prisma.user.create({
+//       data: {
+//         name,
+//         email,
+//         password: hashedPassword
+//       }
+//     });
 
-    res.status(201).json({
-      message: "User created successfully.",
-      user: {
-        email: newUser.email,
-        name: newUser.name
-      }
-    });
-  } catch (error: unknown) {
-    res.status(500).json({
-      message: "An error occurred while creating the user.",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
+//     res.status(201).json({
+//       message: "User created successfully.",
+//       user: {
+//         email: newUser.email,
+//         name: newUser.name
+//       }
+//     });
+//   } catch (error: unknown) {
+//     res.status(500).json({
+//       message: "An error occurred while creating the user.",
+//       error: error instanceof Error ? error.message : "Unknown error"
+//     });
+//   }
+// });
 
-router.post('/signin', async (req: Request, res: Response) => {
-  const body = req.body;
-  const parsedBody = UserSigninSchema.safeParse(body);
-  if (!parsedBody.success) {
-    return res.status(400).json({ 
-      message: "Invalid input data for user signin.",
-      error: parsedBody.error.message });
-  }
+// router.post('/signin', async (req: Request, res: Response) => {
+//   const body = req.body;
+//   const parsedBody = UserSigninSchema.safeParse(body);
+//   if (!parsedBody.success) {
+//     return res.status(400).json({ 
+//       message: "Invalid input data for user signin.",
+//       error: parsedBody.error.message });
+//   }
 
-  const { email, password } = parsedBody.data;
+//   const { email, password } = parsedBody.data;
 
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
+//   try {
+//     const user = await prisma.user.findUnique({
+//       where: { email }
+//     });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       return res.status(401).json({ message: "Invalid email or password." });
+//     }
 
-    const token = jwt.sign({userId: user.id, email: user.email, name: user.name}, JWT_SECRET, { expiresIn: '24h' });
+//     const token = jwt.sign({userId: user.id, email: user.email, name: user.name}, JWT_SECRET, { expiresIn: '24h' });
 
-    res.status(200).json({ message: "User signed in successfully.", token });
-  } catch (error: unknown) {
-    res.status(500).json({
-      message: "An error occurred while signing in the user.",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
+//     res.status(200).json({ message: "User signed in successfully.", token });
+//   } catch (error: unknown) {
+//     res.status(500).json({
+//       message: "An error occurred while signing in the user.",
+//       error: error instanceof Error ? error.message : "Unknown error"
+//     });
+//   }
+// });
 
-router.post('/oauth-signin', async (req: Request, res: Response) => {
-  const { name, email } = req.body;
-  const parsedBody = UserOAuthSigninSchema.safeParse({ name, email });
+// router.post('/oauth-signin', async (req: Request, res: Response) => {
+//   const { name, email } = req.body;
+//   const parsedBody = UserOAuthSigninSchema.safeParse({ name, email });
 
-  if (!parsedBody.success) {
-    return res.status(400).json({ 
-      message: "Invalid input data for OAuth signin.",
-      error: parsedBody.error.message });
-  }
+//   if (!parsedBody.success) {
+//     return res.status(400).json({ 
+//       message: "Invalid input data for OAuth signin.",
+//       error: parsedBody.error.message });
+//   }
 
-  try{
-    let user = await prisma.user.findUnique({
-      where: {
-        email
-      }
-    });
+//   try{
+//     let user = await prisma.user.findUnique({
+//       where: {
+//         email
+//       }
+//     });
 
-    if(!user){
-      user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password: "" // No password for OAuth users
-        }
-      });
-    }
+//     if(!user){
+//       user = await prisma.user.create({
+//         data: {
+//           name,
+//           email,
+//           password: "" // No password for OAuth users
+//         }
+//       });
+//     }
     
-    const token = jwt.sign({userId: user.id, email: user.email, name: user.name}, JWT_SECRET, { expiresIn: '24h' });
+//     const token = jwt.sign({userId: user.id, email: user.email, name: user.name}, JWT_SECRET, { expiresIn: '24h' });
 
-    res.status(200).json({ message: "User signed in successfully.", token });
-    return;
-  } catch(error: unknown){
-    res.status(500).json({
-      message: "An error occurred during OAuth signin.",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
+//     res.status(200).json({ message: "User signed in successfully.", token });
+//     return;
+//   } catch(error: unknown){
+//     res.status(500).json({
+//       message: "An error occurred during OAuth signin.",
+//       error: error instanceof Error ? error.message : "Unknown error"
+//     });
+//   }
+// });
 
 router.post('/create-room', authMiddleware, async (req: Request, res: Response) => {
   const body = req.body;

@@ -25,7 +25,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
@@ -120,7 +120,7 @@ export default function CanvasComponent({roomId, roomName, canvasData, initialCh
     if(session.status === "loading"){
       return;
     }
-    if(session.status === 'unauthenticated' || !session.data?.accessToken || session.data.expires < new Date().toISOString()){
+    if(session.status === 'unauthenticated' || !session.data?.user?.accessToken || session.data.expires < new Date().toISOString()){
       router.push("/signin");
     }
   }, [session, router]);

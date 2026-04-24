@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 async function getRoomId(roomName: string): Promise<string | null> {
     const session = await getServerSession(authOptions);
-    if (!session || !session.accessToken || session.expires < new Date().toISOString()) {
+    if (!session || !session.user?.accessToken || session.expires < new Date().toISOString()) {
         redirect("/signin");
     }
     try {
@@ -14,7 +14,7 @@ async function getRoomId(roomName: string): Promise<string | null> {
             `${process.env.BACKEND_URL}/api/users/room/${roomName}`,
             {
                 headers: {
-                    Authorization: `Bearer ${session.accessToken}`
+                    Authorization: `Bearer ${session.user.accessToken}`
                 }
             }
         );

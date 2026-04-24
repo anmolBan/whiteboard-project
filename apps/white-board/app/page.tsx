@@ -2,15 +2,11 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import { authOptions } from "@/lib/authOptions";
-import { redirect } from "next/navigation";
 
 export default async function Home() {
 
   const session = await getServerSession(authOptions);
 
-  // if(!session || !session.accessToken || session.expires < new Date().toISOString()){
-  //   redirect("/signin");
-  // };
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#080815] text-white">
       {/* ── Global ambient blobs ── */}
@@ -45,7 +41,7 @@ export default async function Home() {
 
         {/* CTAs */}
         <div className="flex items-center gap-3">
-          {(!session?.user || !session.accessToken || session.expires < new Date().toISOString()) ? (
+          {(!session) ? (
             <>
               <Link href="/signin"
                 className="hidden rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:text-white md:block">

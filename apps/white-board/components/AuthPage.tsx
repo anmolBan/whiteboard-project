@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn as nextAuthSignIn } from "next-auth/react";
-import axios from "axios";
+import handleSignup from "@/lib/actions/handleSignup";
 
 export default function AuthPage({ signIn }: { signIn: boolean }) {
   const router = useRouter();
@@ -15,6 +15,16 @@ export default function AuthPage({ signIn }: { signIn: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  interface SignupResponse {
+    message: string;
+    error?: string;
+    status: number;
+    user?: {
+      email: string;
+      name: string;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -22,7 +32,10 @@ export default function AuthPage({ signIn }: { signIn: boolean }) {
     try {
       if (!signIn) {
         // Sign up: hit the backend directly first, then log in
-        await axios.post("/api/signup", { name, email, password });
+        const response: SignupResponse = await handleSignup({ name, email, password });
+        if(response.status !== 201){
+          throw new Error(response.message);
+        }
       }
 
       // Sign in (or sign in after signup) via NextAuth CredentialsProvider

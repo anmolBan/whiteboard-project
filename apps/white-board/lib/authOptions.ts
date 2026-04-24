@@ -1,37 +1,32 @@
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { NextAuthOptions } from "next-auth";
-import axios from "axios";
+import { type NextAuthOptions, type DefaultSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { UserOAuthSigninSchema, UserSigninSchema } from "@repo/types";
+import prisma from "@repo/db";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 // Extend NextAuth types so accessToken / id are recognized natively
 declare module "next-auth" {
   interface Session {
-    accessToken: string;
-    user: {
-      id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
+    user: DefaultSession["user"] & {
+      id?: string;
+      accessToken?: string;
     };
   }
 
   interface User {
+    id: string;
     accessToken?: string;
-  }
-
-  interface Account {
-    backendToken?: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
     id?: string;
+    accessToken?: string;
   }
 }
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3002";
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -40,6 +35,11 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+  },
+
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
 
   providers: [
@@ -51,24 +51,45 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        try {
-          const res = await axios.post(`${BACKEND_URL}/api/users/signin`, {
-            email:    credentials.email,
-            password: credentials.password,
-          });
-          const { token } = res.data;
-          if (!token) return null;
 
-          const payload = JSON.parse(
-            Buffer.from(token.split(".")[1], "base64").toString()
-          );
+        const body = {
+          email: credentials.email,
+          password: credentials.password
+        }
+
+        const parsedBody = UserSigninSchema.safeParse(body);
+
+        if(!parsedBody.success){
+          //return invalid input error to the client and this will automatically return null to indicate failed sign in
+          throw new Error("Invalid input data for user signin.");
+        }
+
+        try{
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          });
+
+          if(!user){
+            throw new Error("Invalid email or password.");
+          }
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+
+          if(!isPasswordValid){
+            throw new Error("Invalid email or password.");
+          }
+
+          const token = jwt.sign({userId: user.id, email: user.email, name: user.name}, process.env.JWT_SECRET || "", { expiresIn: '7d' });
+
           return {
-            id:          payload.userId,
-            name:        payload.name,
-            email:       payload.email,
-            accessToken: token,
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            accessToken: token
           };
-        } catch {
+        } catch (err) {
+          console.error("[NextAuth] Credentials signIn failed:", (err as Error).message);
           return null;
         }
       },
@@ -80,44 +101,70 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
+    // async signIn({ user, account})
     async signIn({ user, account }) {
       if (account?.provider === "google") {
-        try {
-          const res = await axios.post(`${BACKEND_URL}/api/users/oauth-signin`, {
-            name:  user.name,
-            email: user.email,
-          });
-          const { token } = res.data;
-          if (!token) return false;
+        if (!user.email || !user.name) return false;
 
-          // Stash the backend token so the jwt callback can read it
-          account.backendToken = token;
+        const parsedData = UserOAuthSigninSchema.safeParse({
+          name: user.name ?? "",
+          email: user.email ?? "",
+        });
+        if (!parsedData.success) {
+          console.error("[NextAuth] Google signIn failed: Invalid user data from Google.");
+          return false;
+        }
+
+        try {
+          let dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+
+          if (!dbUser) {
+            dbUser = await prisma.user.create({
+              data: {
+                name: user.name,
+                email: user.email,
+                password: "",
+              },
+            });
+          }
+
+          // dbUser is now guaranteed to exist
+          const token = jwt.sign({ userId: dbUser.id, email: user.email, name: user.name }, process.env.JWT_SECRET || "", { expiresIn: "7d" });
+
+          user.accessToken = token;
+          return true;
         } catch (err) {
           console.error("[NextAuth] Google signIn failed:", (err as Error).message);
           return false;
         }
       }
-      return true;
+
+      return true; // ← Allow credentials provider through
     },
 
-    async jwt({ token, user, account }) {
-      if (account?.provider === "google" && account.backendToken) {
-        token.accessToken = account.backendToken;
-        const payload = JSON.parse(
-          Buffer.from(account.backendToken.split(".")[1], "base64").toString()
-        );
-        token.id = payload.userId;
-      } else if (user) {
+    async jwt({ token, user }) {
+
+      if(user){
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         token.accessToken = user.accessToken;
-        token.id          = user.id;
       }
       return token;
     },
 
     async session({ session, token }) {
-      session.accessToken = token.accessToken as string;
-      if (session.user) {
-        session.user.id = token.id as string;
+
+      if(token){
+        session.user = {
+          ...session.user,
+          id: token.id,
+          email: token.email,
+          name: token.name,
+          accessToken: token.accessToken
+        }
       }
       return session;
     },

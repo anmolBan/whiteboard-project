@@ -9,7 +9,7 @@ export function useSocket(){
     useEffect(() => {
         if(status === "loading") return;
         
-        const token = session?.accessToken;
+        const token = session?.user?.accessToken;
         if(!token){
             setLoading(false);
             return;
@@ -30,7 +30,7 @@ export function useSocket(){
                 ws.close();
             }
         }
-    }, [session?.accessToken, status]);
+    }, [session?.user?.accessToken, status]);
 
     return { loading, socket };
 }
