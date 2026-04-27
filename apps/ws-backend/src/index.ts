@@ -11,10 +11,7 @@ const roomManager = RoomManager.getInstance();
 
 // ── Debounce canvas updates: only queue after 2s of inactivity per room ──
 const CANVAS_DEBOUNCE_MS = 2000;
-const pendingCanvasUpdates = new Map<string, {
-  timeout: NodeJS.Timeout;
-  data: CanvasUpdateJobData;
-}>();
+const pendingCanvasUpdates = new Map<string, {timeout: NodeJS.Timeout; data: CanvasUpdateJobData;}>();
 
 function scheduleCanvasUpdate(jobData: CanvasUpdateJobData) {
   const { roomId } = jobData;
