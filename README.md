@@ -392,6 +392,50 @@ If you deploy the system fully, you will typically host:
 - PostgreSQL
 - Redis
 
+## CI/CD Pipelines
+
+Automated deployment is handled by two GitHub Actions workflows in `.github/workflows/`.
+
+### Pipelines
+
+| Workflow | File | Deploys |
+| --- | --- | --- |
+| Deploy HTTP Backend | `cd-http-backend.yml` | `apps/http-backend` |
+| Deploy WS Backend | `cd-ws-backend.yml` | `apps/ws-backend` |
+
+Both pipelines trigger on pushes to `main` and follow the same steps:
+
+1. Build a Docker image from the relevant `Dockerfile` using the full monorepo as build context.
+2. Push the image to Docker Hub tagged with the commit SHA.
+3. Install `cloudflared` to tunnel SSH through Cloudflare Access.
+4. SSH into the deployment server and run the new container, replacing the previous one.
+
+### Required GitHub Secrets
+
+Configure these in **Settings → Secrets and variables → Actions** of the repository:
+
+| Secret | Used by | Description |
+| --- | --- | --- |
+| `DOCKERHUB_USERNAME` | Both | Docker Hub account username |
+| `DOCKERHUB_TOKEN` | Both | Docker Hub access token |
+| `SSH_PRIVATE_KEY` | Both | Private SSH key for the deployment server |
+| `SSH_USERNAME` | Both | SSH login username on the server |
+| `SSH_HOST` | Both | Cloudflare Access hostname for the server |
+| `DATABASE_URL` | Both | PostgreSQL connection string |
+| `JWT_SECRET` | Both | JWT signing secret |
+| `HTTP_BACKEND_PORT` | HTTP backend | Port the Express API listens on |
+| `WS_PORT` | WS backend | Port the WebSocket server listens on |
+| `REDIS_HOST` | WS backend | Redis host |
+| `REDIS_PORT` | WS backend | Redis port |
+| `REDIS_PASSWORD` | WS backend | Redis password |
+| `REDIS_TLS` | WS backend | `true` or `false` for Redis TLS |
+
+### Notes
+
+- The WS backend container runs with `--network host` so it can reach a Redis instance on the host without extra networking configuration.
+- `DATABASE_URL` and `REDIS_PASSWORD` are quoted inside the remote `docker run` command to prevent shell interpretation of special characters such as `&` and `?`.
+- The frontend (`apps/white-board`) is deployed separately via Vercel. See `vercel.json` at the repo root.
+
 ## Current Status / Notes
 
 - The main frontend is `apps/white-board`.
