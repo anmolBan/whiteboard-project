@@ -22,4 +22,22 @@ jobs:
           context: .
           file: ./apps/http-backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/http-backend:${{github.sha}}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/http-backend:${{ github.sha }}
+      
+      - name: Install cloudflared
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/cloudflared
+      
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker kill http-backend-container || true
+            docker rm http-backend-container || true
+            docker pull anmolban/http-backend:${{ github.sha }}
+            docker run -d --name http-backend-container -e DATABASE_URL=${{ secrets.DATABASE_URL}} -e JWT_SECRET=${{ secrets.JWT_SECRET }} -p ${{ secrets.HTTP_BACKEND_PORT }}:${{ secrets.HTTP_BACKEND_PORT }} --restart=unless-stopped anmolban/http-backend:${{ github.sha }}

@@ -22,4 +22,4 @@ jobs:
           context: .
           file: ./apps/ws-backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ws-backend:${{github.sha}}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ws-backend:${{ github.sha }}
