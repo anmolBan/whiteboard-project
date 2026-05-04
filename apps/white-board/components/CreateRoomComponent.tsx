@@ -76,6 +76,8 @@ export default function CreateRoomComponent() {
       } else {
         setError("Failed to create room. Please try again.");
       }
+    } finally{
+      setLoading(false);
     }
   };
 

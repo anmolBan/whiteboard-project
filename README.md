@@ -144,7 +144,6 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/whiteboard"
 JWT_SECRET="replace-this-with-a-strong-secret"
 NEXTAUTH_SECRET="replace-this-with-a-strong-secret"
 
-WHITEBOARD_PORT=3001
 HTTP_PORT=3002
 WS_PORT=8080
 
@@ -171,7 +170,6 @@ REDIS_TLS=false
 | `DATABASE_URL` | Prisma, Next.js auth, worker | PostgreSQL connection string |
 | `JWT_SECRET` | NextAuth, HTTP backend, WS backend | Signs and verifies access tokens |
 | `NEXTAUTH_SECRET` | NextAuth | Secret used by NextAuth session/token encryption |
-| `WHITEBOARD_PORT` | Next.js frontend | Port used by the `white-board` app in Docker |
 | `HTTP_PORT` | HTTP backend | Express API port |
 | `WS_PORT` | WS backend | WebSocket server port |
 | `NEXTAUTH_URL` | NextAuth | Public base URL of the frontend app |
@@ -402,6 +400,7 @@ Automated deployment is handled by two GitHub Actions workflows in `.github/work
 | --- | --- | --- |
 | Deploy HTTP Backend | `cd-http-backend.yml` | `apps/http-backend` |
 | Deploy WS Backend | `cd-ws-backend.yml` | `apps/ws-backend` |
+| Deploy Whiteboard Frontend | `cd-whiteboard-frontend.yml` | `apps/white-board` |
 
 Both pipelines trigger on pushes to `main` and follow the same steps:
 
@@ -429,12 +428,15 @@ Configure these in **Settings → Secrets and variables → Actions** of the rep
 | `REDIS_PORT` | WS backend | Redis port |
 | `REDIS_PASSWORD` | WS backend | Redis password |
 | `REDIS_TLS` | WS backend | `true` or `false` for Redis TLS |
+| `NEXT_PUBLIC_BACKEND_URL` | Frontend | Public HTTP API URL baked into the Next.js image at build time |
+| `NEXT_PUBLIC_WS_URL` | Frontend | Public WebSocket URL baked into the Next.js image at build time |
 
 ### Notes
 
 - The WS backend container runs with `--network host` so it can reach a Redis instance on the host without extra networking configuration.
 - `DATABASE_URL` and `REDIS_PASSWORD` are quoted inside the remote `docker run` command to prevent shell interpretation of special characters such as `&` and `?`.
-- The frontend (`apps/white-board`) is deployed separately via Vercel. See `vercel.json` at the repo root.
+- The frontend pipeline builds the Next.js image with `NEXT_PUBLIC_BACKEND_URL` and `NEXT_PUBLIC_WS_URL` baked in as Docker build args — rebuild the image if those values change.
+- `vercel.json` exists at the repo root but the active deployment uses the Docker-based pipeline above.
 
 ## Current Status / Notes
 
