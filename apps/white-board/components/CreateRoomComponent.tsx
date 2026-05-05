@@ -69,6 +69,8 @@ export default function CreateRoomComponent() {
         router.push(`/canvas/${createRoomName.trim()}`);
       }
     } catch (error: any) {
+      console.log(error);
+      setLoading(false);
       if (error.response?.status === 409) {
         setError("A room with this name already exists. Try a different name.");
       } else if (error.response?.data?.message) {
@@ -76,8 +78,6 @@ export default function CreateRoomComponent() {
       } else {
         setError("Failed to create room. Please try again.");
       }
-    } finally{
-      setLoading(false);
     }
   };
 
@@ -101,6 +101,7 @@ export default function CreateRoomComponent() {
         router.push(`/canvas/${joinRoomName.trim()}`);
       }
     } catch (error: any) {
+      setLoading(false);
       if (error.response?.status === 404) {
         setError("Room not found. Check the name and try again.");
       } else if (error.response?.data?.message) {

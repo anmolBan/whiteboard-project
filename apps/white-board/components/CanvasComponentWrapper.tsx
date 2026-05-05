@@ -11,7 +11,6 @@ async function fetchCanvasData(roomId: string, token: string): Promise<any>{
                 Authorization: `Bearer ${token}`
             }
         });
-        console.log(response.data);
         if(response.status === 200){
             return response.data;
         }

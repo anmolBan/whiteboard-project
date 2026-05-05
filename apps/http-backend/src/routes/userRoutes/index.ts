@@ -138,6 +138,17 @@ router.post('/create-room', authMiddleware, async (req: Request, res: Response) 
   const { name } = parsedBody.data;
 
   try{
+
+    const existingRoom = await prisma.room.findUnique({
+      where: {
+        slug: name
+      }
+    });
+
+    if(existingRoom){
+      return res.status(409).json({message: "A room with this name already exists. Please choose a different name."});
+    }
+
     const room = await prisma.room.create({
       data: {
         slug: name,

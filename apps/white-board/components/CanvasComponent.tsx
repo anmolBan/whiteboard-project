@@ -148,7 +148,6 @@ export default function CanvasComponent({roomId, roomName, canvasData, initialCh
 
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log(data);
       if(data.type === "user-joined" || data.type === "user-left"){
         setRoomMembers(data.users);
       }
